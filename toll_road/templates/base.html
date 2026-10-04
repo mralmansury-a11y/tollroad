@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1C1F24">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta name="description" content="إدارة خدمات الطريق الدولي — منصة موحدة لإدارة العمالة والمعدات والمواد والتقارير الميدانية.">
+<title>{% block title %}الرئيسية{% endblock %} — إدارة خدمات الطريق الدولي</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon.png') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<div class="mobile-topbar">
+    <div class="brand">
+        <img class="brand-logo" src="{{ url_for('static', filename='logo.svg') }}" alt="شعار إدارة خدمات الطريق الدولي">
+        <div class="brand-text">
+            <span class="brand-name">إدارة خدمات الطريق الدولي</span>
+            <span class="brand-sub">Toll Road Services Management</span>
+        </div>
+    </div>
+    <button class="nav-toggle" id="navToggle" aria-label="فتح القائمة" aria-expanded="false">
+        <span></span><span></span><span></span>
+    </button>
+</div>
+
+<div class="shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <img class="brand-logo" src="{{ url_for('static', filename='logo.svg') }}" alt="شعار إدارة خدمات الطريق الدولي">
+            <div class="brand-text">
+                <span class="brand-name">إدارة خدمات الطريق الدولي</span>
+                <span class="brand-sub">Toll Road Services Management</span>
+            </div>
+        </div>
+        <nav class="nav">
+            <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint=='dashboard' }}">
+                <span class="nav-ico">◇</span> لوحة المعلومات
+            </a>
+            <a href="{{ url_for('sites') }}" class="{{ 'active' if request.endpoint in ['sites','site_detail'] }}">
+                <span class="nav-ico">▤</span> المواقع والقواطع
+            </a>
+            <a href="{{ url_for('workers') }}" class="{{ 'active' if request.endpoint=='workers' }}">
+                <span class="nav-ico">◆</span> العمالة والحضور
+            </a>
+            <a href="{{ url_for('equipment') }}" class="{{ 'active' if request.endpoint=='equipment' }}">
+                <span class="nav-ico">▲</span> الأسطول والمعدات
+            </a>
+            <a href="{{ url_for('materials') }}" class="{{ 'active' if request.endpoint=='materials' }}">
+                <span class="nav-ico">■</span> المواد والمخزون
+            </a>
+            <a href="{{ url_for('reports') }}" class="{{ 'active' if request.endpoint=='reports' }}">
+                <span class="nav-ico">▦</span> التقارير والتصدير
+            </a>
+            {% if is_admin %}
+            <a href="{{ url_for('users') }}" class="{{ 'active' if request.endpoint=='users' }}">
+                <span class="nav-ico">●</span> إدارة المستخدمين
+            </a>
+            <a href="{{ url_for('activity_log_view') }}" class="{{ 'active' if request.endpoint=='activity_log_view' }}">
+                <span class="nav-ico">◷</span> سجل النشاط
+            </a>
+            {% endif %}
+        </nav>
+        <div class="sidebar-foot">
+            إدارة خدمات الطريق الدولي<br>
+            جميع الحقوق محفوظة © {{ today[:4] if today else '' }}
+        </div>
+    </aside>
+
+    <main class="content">
+        {% if is_admin and default_password_users %}
+        <div class="flash-stack">
+            <div class="flash flash-error">تنبيه أمني: هذه الحسابات ما زالت تستخدم كلمة المرور الافتراضية
+                ({{ default_password_users|join('، ') }}) — يرجى تغييرها فورًا من صفحة «إدارة المستخدمين».</div>
+        </div>
+        {% endif %}
+
+        <header class="topbar">
+            <h1>{% block page_title %}{% endblock %}</h1>
+            <div class="topbar-actions">
+                <div class="topbar-date">{{ today if today else '' }}</div>
+                {% if current_user.username %}
+                <div class="user-chip">
+                    <div class="avatar">{{ current_user.full_name[0] if current_user.full_name else '؟' }}</div>
+                    <div class="u-meta">
+                        <span class="u-name">{{ current_user.full_name }}</span>
+                        <span class="u-role">{{ current_user.role_label }}</span>
+                    </div>
+                </div>
+                <a class="logout-link" href="{{ url_for('logout') }}">خروج</a>
+                {% endif %}
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<script>
+(function(){
+    var toggle = document.getElementById('navToggle');
+    var sidebar = document.getElementById('sidebar');
+    var backdrop = document.getElementById('sidebarBackdrop');
+    var MOBILE_BREAKPOINT = 980;
+
+    function closeMenu(){
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+        sidebar.setAttribute('aria-hidden', 'true');
+        document.documentElement.classList.remove('menu-open');
+    }
+    function openMenu(){
+        sidebar.classList.add('open');
+        backdrop.classList.add('open');
+        toggle.setAttribute('aria-expanded', 'true');
+        sidebar.setAttribute('aria-hidden', 'false');
+        document.documentElement.classList.add('menu-open');
+    }
+
+    if (toggle) {
+        toggle.addEventListener('click', function(){
+            sidebar.classList.contains('open') ? closeMenu() : openMenu();
+        });
+    }
+    if (backdrop) {
+        backdrop.addEventListener('click', closeMenu);
+    }
+    document.querySelectorAll('.sidebar .nav a').forEach(function(link){
+        link.addEventListener('click', closeMenu);
+    });
+
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) closeMenu();
+    });
+
+    var resizeTimer;
+    window.addEventListener('resize', function(){
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function(){
+            if (window.innerWidth > MOBILE_BREAKPOINT) closeMenu();
+        }, 120);
+    });
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

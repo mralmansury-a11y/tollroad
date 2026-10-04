@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}المواقع والقواطع{% endblock %}
+{% block page_title %}المواقع والقواطع{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet.min.css') }}">
+{% endblock %}
+
+{% block content %}
+
+{% if can_edit %}
+<div class="section card">
+    <h2 class="card-title">إضافة موقع / قاطع جديد</h2>
+    <form method="post" class="form-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field"><label>اسم الموقع</label><input name="name" required placeholder="مثال: القاطع الشمالي"></div>
+        <div class="field"><label>رمز الموقع</label><input name="code" required placeholder="مثال: N-04"></div>
+        <div class="field"><label>من كم</label><input name="km_from" type="number" step="0.1"></div>
+        <div class="field"><label>إلى كم</label><input name="km_to" type="number" step="0.1"></div>
+        <div class="field"><label>الميزانية المعتمدة (د.ل)</label><input name="budget" type="number" step="1000"></div>
+        <div class="field"><label>مدير الموقع</label><input name="manager_name" placeholder="اختياري"></div>
+        <div class="field"><label>خط العرض (Lat)</label><input name="latitude" type="number" step="0.0001" placeholder="مثال: 32.0836"></div>
+        <div class="field"><label>خط الطول (Lng)</label><input name="longitude" type="number" step="0.0001" placeholder="مثال: 20.0864"></div>
+        <button class="btn" type="submit">إضافة الموقع</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="section map-card">
+    <div class="map-card-head">
+        <div>
+            <h2>خريطة القواطع</h2>
+            <div class="muted" style="font-size:11.5px; margin-top:3px;">موقع كل قاطع على الطريق — انقر على أي دبوس لعرض ملخصه</div>
+        </div>
+        <div class="map-legend">
+            <span><i class="dot-blue"></i> قيد التنفيذ</span>
+            <span><i class="dot-green"></i> مكتمل</span>
+            <span><i class="dot-red"></i> متوقف</span>
+        </div>
+    </div>
+    <div class="map-frame" id="sitesOverviewMap">
+        {% if not sites_geo %}
+        <div class="map-empty">
+            <div class="map-empty-ico">◎</div>
+            <strong>لا توجد إحداثيات مسجّلة بعد</strong>
+            <span>أضف خط العرض وخط الطول عند إنشاء موقع جديد أو من صفحة تفاصيل الموقع ليظهر هنا على الخريطة.</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-head"><h2>كل المواقع</h2><span class="count-pill">{{ sites|length }}</span></div>
+
+    <form class="search-bar" method="get">
+        <input type="text" name="q" value="{{ q }}" placeholder="بحث بالاسم أو الرمز...">
+        <button class="btn btn-ghost btn-small" type="submit">بحث</button>
+        {% if q %}<a class="btn btn-ghost btn-small" href="{{ url_for('sites') }}">إعادة تعيين</a>{% endif %}
+    </form>
+
+    <div class="table-wrap"><div class="card-pad">
+    {% if sites %}
+    <table>
+        <thead><tr><th>الرمز</th><th>الاسم</th><th>النطاق (كم)</th><th>نسبة الإنجاز</th><th>الحالة</th><th></th></tr></thead>
+        <tbody>
+        {% for s in sites %}
+            <tr>
+                <td data-label="الرمز"><span class="badge badge-gray">{{ s.code }}</span></td>
+                <td data-label="الاسم">{{ s.name }}</td>
+                <td data-label="النطاق (كم)">{{ s.km_from if s.km_from is not none else '—' }} — {{ s.km_to if s.km_to is not none else '—' }}</td>
+                <td data-label="نسبة الإنجاز">
+                    <div class="progress-bar" style="width:110px;"><span style="width:{{ s.progress_pct }}%;"></span></div>
+                    <span class="muted" style="font-size:11px;">{{ s.progress_pct }}%</span>
+                </td>
+                <td data-label="الحالة">
+                    {% if s.status == 'مكتمل' %}<span class="badge badge-green">مكتمل</span>
+                    {% elif s.status == 'متوقف' %}<span class="badge badge-red">متوقف</span>
+                    {% else %}<span class="badge badge-blue">قيد التنفيذ</span>{% endif %}
+                </td>
+                <td data-label=""><a class="link-btn" href="{{ url_for('site_detail', site_id=s.id) }}">عرض التفاصيل ←</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty">لا توجد مواقع مطابقة.</div>
+    {% endif %}
+    </div></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{% if sites_geo %}
+<script src="{{ url_for('static', filename='vendor/leaflet.min.js') }}"></script>
+<script>
+(function(){
+    var sites = {{ sites_geo|tojson }};
+    function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+    var map = L.map('sitesOverviewMap', { scrollWheelZoom: false, attributionControl: true });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+    }).addTo(map);
+
+    function pinClass(status){
+        if (status === 'مكتمل') return 'pin-green';
+        if (status === 'متوقف') return 'pin-red';
+        return 'pin-blue';
+    }
+
+    var bounds = [];
+    sites.forEach(function(s){
+        var icon = L.divIcon({
+            className: '',
+            html: '<div class="site-pin ' + pinClass(s.status) + '"><span class="site-pin-label">' + (s.code ? esc(s.code.slice(0,1)) : '●') + '</span></div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 28],
+            popupAnchor: [0, -26]
+        });
+
+        var marker = L.marker([s.latitude, s.longitude], { icon: icon }).addTo(map);
+        var pct = Math.max(0, Math.min(100, s.progress_pct || 0));
+
+        marker.bindPopup(
+            '<div class="map-popup">' +
+                '<div class="mp-title">' + esc(s.name) + '</div>' +
+                '<div class="mp-code">' + esc(s.code) + ' · ' + esc(s.status) + '</div>' +
+                '<div class="mp-progress">' +
+                    'نسبة الإنجاز: ' + pct + '%' +
+                    '<div class="progress-bar"><span style="width:' + pct + '%;"></span></div>' +
+                '</div>' +
+                '<a class="mp-link" href="' + esc(s.url) + '">عرض التفاصيل ←</a>' +
+            '</div>'
+        );
+
+        bounds.push([s.latitude, s.longitude]);
+    });
+
+    if (bounds.length === 1) {
+        map.setView(bounds[0], 11);
+    } else {
+        map.fitBounds(bounds, { padding: [36, 36] });
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}

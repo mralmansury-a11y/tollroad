@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}{{ site.name }}{% endblock %}
+{% block page_title %}{{ site.name }} <span class="muted" style="font-size:14px; font-weight:600;">({{ site.code }})</span>{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet.min.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<div class="card section">
+    <div class="kpi-row">
+        <div class="kpi">
+            <div class="kpi-label">نسبة الإنجاز</div>
+            <div class="kpi-value">{{ site.progress_pct }}%</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">الميزانية المعتمدة</div>
+            <div class="kpi-value">{{ "{:,.0f}".format(site.budget) }} د.ل</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">المصروف الفعلي</div>
+            <div class="kpi-value">{{ "{:,.0f}".format(site.spent) }} د.ل</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">الحضور اليوم</div>
+            <div class="kpi-value">{{ present_today }} / {{ workers|length }}</div>
+        </div>
+    </div>
+    <div class="progress-bar {{ 'danger' if site.spent > site.budget }}" style="margin-top:16px;">
+        <span style="width: {{ [ (site.spent / site.budget * 100) if site.budget else 0, 100]|min }}%;"></span>
+    </div>
+    <div class="muted" style="font-size:11.5px; margin-top:6px;">
+        المدير المسؤول: {{ site.manager_name or '— غير محدد —' }} ·
+        النطاق: {{ site.km_from if site.km_from is not none else '—' }} — {{ site.km_to if site.km_to is not none else '—' }} كم
+    </div>
+</div>
+
+<div class="section map-card">
+    <div class="map-card-head">
+        <div>
+            <h2>موقع القاطع على الخريطة</h2>
+            <div class="muted" style="font-size:11.5px; margin-top:3px;">
+                {% if site.latitude is not none and site.longitude is not none %}
+                    {{ "%.4f"|format(site.latitude) }}, {{ "%.4f"|format(site.longitude) }}
+                {% else %}
+                    لم يتم تحديد الإحداثيات بعد
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="map-frame map-frame-sm" id="siteDetailMap">
+        {% if site.latitude is none or site.longitude is none %}
+        <div class="map-empty">
+            <div class="map-empty-ico">◎</div>
+            <strong>لا توجد إحداثيات لهذا الموقع</strong>
+            <span>{% if can_edit %}أضف خط العرض وخط الطول في نموذج "تحديث بيانات الموقع" أدناه ليظهر هنا على الخريطة.{% else %}لم يقم المسؤول بتحديد موقع هذا القاطع على الخريطة بعد.{% endif %}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if can_edit %}
+<div class="card section">
+    <h2 class="card-title">تحديث بيانات الموقع</h2>
+    <form method="post" action="{{ url_for('update_site', site_id=site.id) }}" class="form-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field"><label>نسبة الإنجاز %</label><input name="progress_pct" type="number" step="1" min="0" max="100" value="{{ site.progress_pct }}"></div>
+        <div class="field"><label>الميزانية (د.ل)</label><input name="budget" type="number" step="1000" value="{{ site.budget }}"></div>
+        <div class="field"><label>المصروف الفعلي (د.ل)</label><input name="spent" type="number" step="1000" value="{{ site.spent }}"></div>
+        <div class="field">
+            <label>الحالة</label>
+            <select name="status">
+                <option value="قيد التنفيذ" {{ 'selected' if site.status=='قيد التنفيذ' }}>قيد التنفيذ</option>
+                <option value="متوقف" {{ 'selected' if site.status=='متوقف' }}>متوقف</option>
+                <option value="مكتمل" {{ 'selected' if site.status=='مكتمل' }}>مكتمل</option>
+            </select>
+        </div>
+        <div class="field"><label>مدير الموقع</label><input name="manager_name" value="{{ site.manager_name or '' }}"></div>
+        <div class="field"><label>خط العرض (Lat)</label><input name="latitude" type="number" step="0.0001" value="{{ site.latitude if site.latitude is not none else '' }}" placeholder="مثال: 32.0836"></div>
+        <div class="field"><label>خط الطول (Lng)</label><input name="longitude" type="number" step="0.0001" value="{{ site.longitude if site.longitude is not none else '' }}" placeholder="مثال: 20.0864"></div>
+        <button class="btn" type="submit">حفظ التحديث</button>
+    </form>
+    <div class="geo-hint">◎ حدّد إحداثيات الموقع لعرضه على الخريطة أعلاه وفي خريطة صفحة "المواقع والقواطع".</div>
+</div>
+{% endif %}
+
+<div class="two-col">
+    <div>
+        <div class="section">
+            <div class="section-head"><h2>العمالة في هذا الموقع</h2><span class="count-pill">{{ workers|length }}</span></div>
+            <div class="table-wrap"><div class="card-pad">
+            {% if workers %}
+            <table>
+                <thead><tr><th>الاسم</th><th>الدور</th><th>الهاتف</th></tr></thead>
+                <tbody>
+                {% for w in workers %}
+                    <tr><td data-label="الاسم">{{ w.name }}</td><td data-label="الدور">{{ w.role or '—' }}</td><td data-label="الهاتف">{{ w.phone or '—' }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<div class="empty">لا يوجد عمال في هذا الموقع.</div>{% endif %}
+            </div></div>
+        </div>
+
+        <div class="section">
+            <div class="section-head"><h2>المعدات في هذا الموقع</h2><span class="count-pill">{{ equipment|length }}</span></div>
+            <div class="table-wrap"><div class="card-pad">
+            {% if equipment %}
+            <table>
+                <thead><tr><th>المعدة</th><th>الحالة</th><th>ساعات التشغيل</th></tr></thead>
+                <tbody>
+                {% for e in equipment %}
+                    <tr>
+                        <td data-label="المعدة">{{ e.name }} <span class="muted">({{ e.code }})</span></td>
+                        <td data-label="الحالة">
+                            {% if e.status == 'نشطة' %}<span class="badge badge-green">نشطة</span>
+                            {% elif e.status == 'تحت الصيانة' %}<span class="badge badge-amber">تحت الصيانة</span>
+                            {% else %}<span class="badge badge-red">متوقفة</span>{% endif %}
+                        </td>
+                        <td data-label="ساعات التشغيل">{{ e.operating_hours|round(1) }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<div class="empty">لا توجد معدات في هذا الموقع.</div>{% endif %}
+            </div></div>
+        </div>
+    </div>
+
+    <div>
+        <div class="section">
+            <div class="section-head"><h2>أرصدة المواد في هذا الموقع</h2><span class="count-pill">{{ stock|length }}</span></div>
+            <div class="table-wrap"><div class="card-pad">
+            {% if stock %}
+            <table>
+                <thead><tr><th>المادة</th><th>الرصيد</th><th>الحالة</th></tr></thead>
+                <tbody>
+                {% for s in stock %}
+                    <tr>
+                        <td data-label="المادة">{{ s.material_name }}</td>
+                        <td data-label="الرصيد">{{ s.quantity }} {{ s.unit }}</td>
+                        <td data-label="الحالة">
+                            {% if s.quantity < s.min_threshold %}<span class="badge badge-red">تحت الحد الأدنى</span>
+                            {% else %}<span class="badge badge-green">آمن</span>{% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<div class="empty">لا توجد أرصدة مسجّلة لهذا الموقع.</div>{% endif %}
+            </div></div>
+        </div>
+    </div>
+</div>
+
+<a class="link-btn" href="{{ url_for('sites') }}">← العودة لقائمة المواقع</a>
+
+{% endblock %}
+
+{% block scripts %}
+{% if site.latitude is not none and site.longitude is not none %}
+<script src="{{ url_for('static', filename='vendor/leaflet.min.js') }}"></script>
+<script>
+(function(){
+    var lat = {{ site.latitude }};
+    var lng = {{ site.longitude }};
+
+    var map = L.map('siteDetailMap', { scrollWheelZoom: false, attributionControl: true }).setView([lat, lng], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+    }).addTo(map);
+
+    var icon = L.divIcon({
+        className: '',
+        html: '<div class="site-pin site-pin-single"><span class="site-pin-label"></span></div>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 28],
+        popupAnchor: [0, -26]
+    });
+
+    var info = {{ {"name": site.name, "code": site.code, "status": site.status,
+                   "from": site.km_from if site.km_from is not none else "—",
+                   "to": site.km_to if site.km_to is not none else "—"}|tojson }};
+    function el(cls, text){ var d = document.createElement('div'); d.className = cls; d.textContent = text; return d; }
+    var box = document.createElement('div'); box.className = 'map-popup';
+    box.appendChild(el('mp-title', info.name));
+    box.appendChild(el('mp-code', info.code + ' · ' + info.status));
+    box.appendChild(el('mp-meta', 'النطاق: ' + info.from + ' — ' + info.to + ' كم'));
+
+    var marker = L.marker([lat, lng], { icon: icon }).addTo(map).bindPopup(box).openPopup();
+    var lbl = marker.getElement() && marker.getElement().querySelector('.site-pin-label');
+    if (lbl) lbl.textContent = info.code ? info.code.charAt(0) : '●';
+})();
+</script>
+{% endif %}
+{% endblock %}

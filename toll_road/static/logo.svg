@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="إدارة خدمات الطريق الدولي - Toll Road Services Management">
+  <defs>
+    <linearGradient id="inkGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#43464C"/>
+      <stop offset="0.55" stop-color="#2A2D32"/>
+      <stop offset="1" stop-color="#14161A"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#EEDFB6"/>
+      <stop offset="0.5" stop-color="#DCC489"/>
+      <stop offset="1" stop-color="#BE9E5B"/>
+    </linearGradient>
+    <linearGradient id="starGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F2F2F0"/>
+    </linearGradient>
+    <clipPath id="diamondClip">
+      <rect x="96" y="96" width="320" height="320" rx="70" transform="rotate(45 256 256)"/>
+    </clipPath>
+    <filter id="softShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="7" flood-color="#14161A" flood-opacity="0.20"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#softShadow)">
+    <!-- أرضية المعيّن الداكنة -->
+    <g clip-path="url(#diamondClip)">
+      <rect x="0" y="0" width="512" height="512" fill="url(#inkGrad)"/>
+
+      <!-- المنطقة الذهبية على يمين الطريق -->
+      <path d="M256 54 C315 150 315 362 256 458 L512 458 L512 54 Z" fill="url(#goldGrad)"/>
+
+      <!-- خط حافة الطريق الأبيض -->
+      <path d="M256 54 C315 150 315 362 256 458" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" opacity="0.95"/>
+
+      <!-- خطوط الطريق المتقطعة (على الجانب الداكن) -->
+      <path d="M256 54 C315 150 315 362 256 458"
+            transform="translate(-14,0)"
+            fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round"
+            stroke-dasharray="30 30" opacity="0.96"/>
+
+      <!-- النجمة الخماسية البيضاء -->
+      <path d="M170 188 L184.7 225.8 L225.2 228.1 L193.8 253.7 L204.1 292.9 L170 271 L135.9 292.9 L146.2 253.7 L114.8 228.1 L155.3 225.8 Z"
+            fill="url(#starGrad)"/>
+    </g>
+
+    <!-- الإطار: خط رمادي خارجي + حلقة بيضاء -->
+    <rect x="96" y="96" width="320" height="320" rx="70" transform="rotate(45 256 256)"
+          fill="none" stroke="#DCDBD4" stroke-width="21"/>
+    <rect x="96" y="96" width="320" height="320" rx="70" transform="rotate(45 256 256)"
+          fill="none" stroke="#FFFFFF" stroke-width="17"/>
+  </g>
+</svg>

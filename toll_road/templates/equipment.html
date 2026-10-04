@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}الأسطول والمعدات{% endblock %}
+{% block page_title %}الأسطول والمعدات الثقيلة{% endblock %}
+
+{% block content %}
+
+{% if can_edit %}
+<div class="card section">
+    <h2 class="card-title">تسجيل معدة جديدة</h2>
+    <form method="post" class="form-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field"><label>اسم المعدة</label><input name="name" required placeholder="مثال: حفارة كاتربيلر"></div>
+        <div class="field"><label>النوع</label><input name="type" placeholder="حفارة / شاحنة / مدحلة"></div>
+        <div class="field"><label>الرمز</label><input name="code" required placeholder="EQ-106"></div>
+        <div class="field">
+            <label>الموقع الحالي</label>
+            <select name="site_id">
+                <option value="">— بدون —</option>
+                {% for s in sites %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="field"><label>دورة الصيانة (ساعة)</label><input name="maintenance_interval" type="number" value="250"></div>
+        <div class="field"><label>تكلفة اللتر (د.ل)</label><input name="fuel_cost_per_liter" type="number" step="0.1" value="0"></div>
+        <button class="btn" type="submit">تسجيل المعدة</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="section">
+    <div class="section-head"><h2>كل المعدات</h2><span class="count-pill">{{ equipment|length }}</span></div>
+
+    <form class="search-bar" method="get">
+        <input type="text" name="q" value="{{ q }}" placeholder="بحث بالاسم أو الرمز أو النوع...">
+        <button class="btn btn-ghost btn-small" type="submit">بحث</button>
+        {% if q %}<a class="btn btn-ghost btn-small" href="{{ url_for('equipment') }}">إعادة تعيين</a>{% endif %}
+    </form>
+
+    {% if equipment %}
+    <div class="grid grid-3">
+    {% for e in equipment %}
+        {% set ratio = (e.hours_since_maint / e.maintenance_interval * 100) if e.maintenance_interval else 0 %}
+        {% set liters = fuel_costs.get(e.id, 0) %}
+        <div class="card">
+            <div class="eq-card-head">
+                <div>
+                    <strong>{{ e.name }}</strong><br>
+                    <span class="eq-meta">{{ e.code }} · {{ e.type or 'غير محدد' }}</span>
+                </div>
+                {% if e.status == 'نشطة' %}<span class="badge badge-green">نشطة</span>
+                {% elif e.status == 'تحت الصيانة' %}<span class="badge badge-amber">تحت الصيانة</span>
+                {% else %}<span class="badge badge-red">متوقفة</span>{% endif %}
+            </div>
+
+            <div class="eq-line muted">
+                الموقع الحالي: {{ e.site_name or '— غير محدد —' }}
+            </div>
+            <div class="eq-line">
+                ساعات التشغيل الكلية: <strong>{{ e.operating_hours|round(1) }}</strong>
+            </div>
+            <div class="eq-line">
+                إجمالي الوقود المستهلك: <strong>{{ liters|round(1) }}</strong> لتر
+                {% if e.fuel_cost_per_liter %}<span class="muted">(≈ {{ (liters * e.fuel_cost_per_liter)|round(0) }} د.ل)</span>{% endif %}
+            </div>
+            <div class="eq-sub">
+                منذ آخر صيانة: {{ e.hours_since_maint|round(1) }} / {{ e.maintenance_interval|round(0) }} ساعة
+            </div>
+            <div class="progress-bar {{ 'danger' if ratio >= 100 }}">
+                <span style="width: {{ [ratio, 100]|min }}%;"></span>
+            </div>
+
+            {% if can_edit %}
+            <details>
+                <summary style="color: var(--amber);">تسجيل حركة تشغيل / صيانة</summary>
+                <form method="post" action="{{ url_for('log_equipment', eq_id=e.id) }}" class="form-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="field">
+                        <label>النوع</label>
+                        <select name="log_type" required>
+                            <option value="تشغيل">تشغيل</option>
+                            <option value="صيانة">صيانة (تصفير العداد)</option>
+                        </select>
+                    </div>
+                    <div class="field"><label>ساعات التشغيل</label><input name="hours_used" type="number" step="0.5" value="0"></div>
+                    <div class="field"><label>الوقود (لتر)</label><input name="fuel_liters" type="number" step="0.5" value="0"></div>
+                    <div class="field"><label>ملاحظة</label><input name="note" placeholder="اختياري"></div>
+                    <button class="btn btn-small" type="submit">حفظ</button>
+                </form>
+            </details>
+
+            <details>
+                <summary style="color: var(--muted);">نقل / تغيير حالة</summary>
+                <form method="post" action="{{ url_for('update_equipment_status', eq_id=e.id) }}" class="form-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="field">
+                        <label>الحالة</label>
+                        <select name="status">
+                            <option value="نشطة" {{ 'selected' if e.status=='نشطة' }}>نشطة</option>
+                            <option value="تحت الصيانة" {{ 'selected' if e.status=='تحت الصيانة' }}>تحت الصيانة</option>
+                            <option value="متوقفة" {{ 'selected' if e.status=='متوقفة' }}>متوقفة</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>الموقع الجديد</label>
+                        <select name="site_id">
+                            <option value="">— بدون —</option>
+                            {% for s in sites %}<option value="{{ s.id }}" {{ 'selected' if e.site_id==s.id }}>{{ s.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <button class="btn btn-ghost btn-small" type="submit">تحديث</button>
+                </form>
+            </details>
+            {% endif %}
+        </div>
+    {% endfor %}
+    </div>
+    {% else %}
+        <div class="empty">لا توجد معدات مطابقة.</div>
+    {% endif %}
+</div>
+
+{% endblock %}

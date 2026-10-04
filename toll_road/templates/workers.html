@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}العمالة والحضور{% endblock %}
+{% block page_title %}العمالة والانتشار الميداني{% endblock %}
+
+{% block content %}
+
+{% if can_edit %}
+<div class="two-col section">
+    <div class="card">
+        <h2 class="card-title">إضافة عامل جديد</h2>
+        <form method="post" class="form-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="field"><label>الاسم</label><input name="name" required></div>
+            <div class="field"><label>المهنة / الدور</label><input name="role" placeholder="مثال: فني رصف"></div>
+            <div class="field"><label>الهاتف</label><input name="phone"></div>
+            <div class="field"><label>الرقم الوطني</label><input name="national_id"></div>
+            <div class="field"><label>الأجر اليومي (د.ل)</label><input name="daily_wage" type="number" step="1" value="0"></div>
+            <div class="field">
+                <label>الموقع الحالي</label>
+                <select name="site_id">
+                    <option value="">— بدون —</option>
+                    {% for s in sites %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <button class="btn" type="submit">إضافة العامل</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">تسجيل حضور اليوم <span class="muted" style="font-weight:600;">({{ today }})</span></h2>
+        <form method="post" action="{{ url_for('mark_attendance') }}" class="form-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="field">
+                <label>العامل</label>
+                <select name="worker_id" required>
+                    {% for w in workers %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label>الموقع</label>
+                <select name="site_id" required>
+                    {% for s in sites %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label>الحالة</label>
+                <select name="status" required>
+                    <option value="حاضر">حاضر</option>
+                    <option value="غائب">غائب</option>
+                    <option value="إجازة">إجازة</option>
+                </select>
+            </div>
+            <div class="field"><label>وقت الحضور</label><input name="check_in_time" type="time"></div>
+            <div class="field"><label>ساعات إضافية</label><input name="overtime_hours" type="number" step="0.5" value="0"></div>
+            <button class="btn" type="submit">تسجيل</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="section">
+    <div class="section-head"><h2>قائمة العمالة</h2><span class="count-pill">{{ workers|length }}</span></div>
+
+    <form class="search-bar" method="get">
+        <input type="text" name="q" value="{{ q }}" placeholder="بحث بالاسم أو الدور أو الهاتف...">
+        <select name="site_id">
+            <option value="">كل المواقع</option>
+            {% for s in sites %}<option value="{{ s.id }}" {{ 'selected' if site_filter==s.id|string }}>{{ s.name }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-ghost btn-small" type="submit">تصفية</button>
+        {% if q or site_filter %}<a class="btn btn-ghost btn-small" href="{{ url_for('workers') }}">إعادة تعيين</a>{% endif %}
+    </form>
+
+    <div class="table-wrap"><div class="card-pad">
+    {% if workers %}
+    <table>
+        <thead><tr><th>الاسم</th><th>الدور</th><th>الموقع</th><th>الهاتف</th><th>الأجر اليومي</th><th>حالة اليوم</th></tr></thead>
+        <tbody>
+        {% for w in workers %}
+            <tr>
+                <td data-label="الاسم">{{ w.name }}</td>
+                <td data-label="الدور">{{ w.role or '—' }}</td>
+                <td data-label="الموقع">{{ w.site_name or '—' }}</td>
+                <td data-label="الهاتف">{{ w.phone or '—' }}</td>
+                <td data-label="الأجر اليومي">{{ w.daily_wage }} د.ل</td>
+                <td data-label="حالة اليوم">
+                    {% if w.today_status == 'حاضر' %}<span class="badge badge-green">حاضر</span>
+                    {% elif w.today_status == 'غائب' %}<span class="badge badge-red">غائب</span>
+                    {% elif w.today_status %}<span class="badge badge-amber">{{ w.today_status }}</span>
+                    {% else %}<span class="badge badge-gray">لم يُسجَّل</span>{% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty">لا يوجد عمال مطابقون.</div>
+    {% endif %}
+    </div></div>
+</div>
+
+{% endblock %}

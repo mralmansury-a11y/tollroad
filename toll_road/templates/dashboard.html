@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}لوحة المعلومات{% endblock %}
+{% block page_title %}لوحة المعلومات{% endblock %}
+
+{% block content %}
+
+<div class="grid grid-4 section">
+    <div class="card stat-card accent">
+        <div class="stat-label">إجمالي العمالة النشطة</div>
+        <div class="stat-value">{{ total_workers }}</div>
+        <div class="stat-sub">الحاضرون اليوم: {{ present_today }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">عدد المواقع / القواطع</div>
+        <div class="stat-value">{{ sites|length }}</div>
+        <div class="stat-sub">من كم 0 إلى كم 390</div>
+    </div>
+    <div class="card stat-card {{ 'warn' if maintenance_due|length > 0 }}">
+        <div class="stat-label">معدات بحاجة لصيانة</div>
+        <div class="stat-value">{{ maintenance_due|length }}</div>
+        <div class="stat-sub">تجاوزت دورة التشغيل المقررة</div>
+    </div>
+    <div class="card stat-card {{ 'warn' if low_stock|length > 0 }}">
+        <div class="stat-label">تنبيهات نقص المواد</div>
+        <div class="stat-value">{{ low_stock|length }}</div>
+        <div class="stat-sub">أصناف تحت الحد الأدنى</div>
+    </div>
+</div>
+
+<div class="grid grid-3 section">
+    <div class="card stat-card accent">
+        <div class="stat-label">إجمالي الميزانية المعتمدة</div>
+        <div class="stat-value" style="font-size:22px;">{{ "{:,.0f}".format(total_budget) }} د.ل</div>
+    </div>
+    <div class="card stat-card {{ 'warn' if total_spent > total_budget else '' }}">
+        <div class="stat-label">إجمالي المصروف الفعلي</div>
+        <div class="stat-value" style="font-size:22px;">{{ "{:,.0f}".format(total_spent) }} د.ل</div>
+        <div class="stat-sub">{{ ((total_spent/total_budget*100)|round(1)) if total_budget else 0 }}% من الميزانية</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">قيمة المخزون الإجمالية</div>
+        <div class="stat-value" style="font-size:22px;">{{ "{:,.0f}".format(stock_value|sum(attribute='value') if stock_value else 0) }} د.ل</div>
+    </div>
+</div>
+
+<div class="grid grid-3 section">
+    <div class="chart-card">
+        <h2>اتجاه الحضور — آخر 7 أيام</h2>
+        <canvas id="attendanceChart" height="180"></canvas>
+    </div>
+    <div class="chart-card">
+        <h2>توزيع حالة المعدات</h2>
+        <canvas id="equipmentChart" height="180"></canvas>
+    </div>
+    <div class="chart-card">
+        <h2>الميزانية مقابل المصروف لكل موقع</h2>
+        <canvas id="budgetChart" height="180"></canvas>
+    </div>
+</div>
+
+<div class="two-col">
+    <div>
+        <div class="section">
+            <div class="section-head">
+                <h2>الحضور اليوم حسب الموقع</h2>
+                <span class="count-pill">{{ today }}</span>
+            </div>
+            <div class="table-wrap">
+                <div class="card-pad">
+                <table>
+                    <thead><tr><th>الموقع</th><th>عدد الحاضرين</th></tr></thead>
+                    <tbody>
+                    {% for row in attendance_today %}
+                        <tr>
+                            <td data-label="الموقع">{{ row.site_name }}</td>
+                            <td data-label="عدد الحاضرين">{{ row.present_count }} عامل</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-head">
+                <h2>معدات بحاجة لصيانة عاجلة</h2>
+                <span class="count-pill">{{ maintenance_due|length }}</span>
+            </div>
+            <div class="table-wrap">
+                <div class="card-pad">
+                {% if maintenance_due %}
+                <table>
+                    <thead><tr><th>المعدة</th><th>الموقع</th><th>ساعات منذ آخر صيانة</th></tr></thead>
+                    <tbody>
+                    {% for e in maintenance_due %}
+                        <tr>
+                            <td data-label="المعدة">{{ e.name }} <span class="muted">({{ e.code }})</span></td>
+                            <td data-label="الموقع">{{ e.site_name or '—' }}</td>
+                            <td data-label="ساعات منذ آخر صيانة"><span class="badge badge-red">{{ (e.operating_hours - e.hours_at_last_maint)|round(0) }} ساعة</span></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                    <div class="empty">لا توجد معدات متأخرة عن الصيانة حاليًا.</div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="section">
+            <div class="section-head">
+                <h2>مواد تحت الحد الأدنى</h2>
+                <span class="count-pill">{{ low_stock|length }}</span>
+            </div>
+            <div class="table-wrap">
+                <div class="card-pad">
+                {% if low_stock %}
+                <table>
+                    <thead><tr><th>المادة</th><th>الموقع</th><th>الرصيد</th></tr></thead>
+                    <tbody>
+                    {% for s in low_stock %}
+                        <tr>
+                            <td data-label="المادة">{{ s.material_name }}</td>
+                            <td data-label="الموقع">{{ s.site_name }}</td>
+                            <td data-label="الرصيد"><span class="badge badge-amber">{{ s.quantity }} / {{ s.min_threshold }} {{ s.unit }}</span></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                    <div class="empty">جميع الأرصدة ضمن الحدود الآمنة.</div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-head">
+                <h2>طلبات تحويل معلّقة</h2>
+                <span class="count-pill">{{ pending_transfers|length }}</span>
+            </div>
+            <div class="table-wrap">
+                <div class="card-pad">
+                {% if pending_transfers %}
+                <table>
+                    <thead><tr><th>المادة</th><th>من → إلى</th><th>الكمية</th></tr></thead>
+                    <tbody>
+                    {% for t in pending_transfers %}
+                        <tr>
+                            <td data-label="المادة">{{ t.material_name }}</td>
+                            <td data-label="من → إلى">{{ t.from_name or 'مستودع مركزي' }} ← {{ t.to_name }}</td>
+                            <td data-label="الكمية">{{ t.quantity }} {{ t.unit }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                    <div class="empty">لا توجد طلبات تحويل معلّقة.</div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script>
+(function(){
+    var ink = '#1C1F24', gold = '#C9A66B', bronze = '#8C6D28', red = '#C7362D', green = '#1A8F5C', muted = '#7C828C';
+
+    Chart.defaults.font.family = "'Tajawal','Cairo',sans-serif";
+    Chart.defaults.color = muted;
+
+    new Chart(document.getElementById('attendanceChart'), {
+        type: 'line',
+        data: {
+            labels: {{ attendance_trend|map(attribute='date')|list|tojson }},
+            datasets: [{
+                label: 'عدد الحاضرين',
+                data: {{ attendance_trend|map(attribute='count')|list|tojson }},
+                borderColor: bronze, backgroundColor: 'rgba(140,109,40,.14)',
+                fill: true, tension: .35, pointRadius: 3, pointBackgroundColor: bronze,
+            }]
+        },
+        options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true } } }
+    });
+
+    new Chart(document.getElementById('equipmentChart'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ equipment_status|map(attribute='status')|list|tojson }},
+            datasets: [{
+                data: {{ equipment_status|map(attribute='c')|list|tojson }},
+                backgroundColor: [green, gold, red, ink],
+                borderWidth: 2, borderColor: '#fff',
+            }]
+        },
+        options: { plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, padding:14 } } } }
+    });
+
+    new Chart(document.getElementById('budgetChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ budget_data|map(attribute='name')|list|tojson }},
+            datasets: [
+                { label: 'الميزانية', data: {{ budget_data|map(attribute='budget')|list|tojson }}, backgroundColor: 'rgba(201,166,107,.75)', borderRadius: 6 },
+                { label: 'المصروف', data: {{ budget_data|map(attribute='spent')|list|tojson }}, backgroundColor: ink, borderRadius: 6 }
+            ]
+        },
+        options: { plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, padding:14 } } }, scales:{ y:{ beginAtZero:true } } }
+    });
+})();
+</script>
+{% endblock %}

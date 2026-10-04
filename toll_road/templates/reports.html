@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}التقارير والتصدير{% endblock %}
+{% block page_title %}التقارير والتصدير{% endblock %}
+
+{% block content %}
+
+<div class="card section">
+    <h2 class="card-title">تصدير سريع (CSV يفتح في Excel)</h2>
+    <div class="export-row">
+        <a class="btn btn-ghost" href="{{ url_for('export_entity', entity='sites') }}">تصدير المواقع</a>
+        <a class="btn btn-ghost" href="{{ url_for('export_entity', entity='workers') }}">تصدير العمالة</a>
+        <a class="btn btn-ghost" href="{{ url_for('export_entity', entity='equipment') }}">تصدير المعدات</a>
+        <a class="btn btn-ghost" href="{{ url_for('export_entity', entity='materials') }}">تصدير أرصدة المواد</a>
+    </div>
+</div>
+
+<div class="card section">
+    <h2 class="card-title">تقرير الحضور والأجور</h2>
+    <form class="search-bar" method="get" action="{{ url_for('reports') }}">
+        <div class="field" style="max-width:170px;"><label>من تاريخ</label><input type="date" name="date_from" value="{{ date_from }}"></div>
+        <div class="field" style="max-width:170px;"><label>إلى تاريخ</label><input type="date" name="date_to" value="{{ date_to }}"></div>
+        <div class="field" style="max-width:220px;">
+            <label>الموقع</label>
+            <select name="site_id">
+                <option value="">كل المواقع</option>
+                {% for s in sites %}<option value="{{ s.id }}" {{ 'selected' if site_id==s.id|string }}>{{ s.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <button class="btn" type="submit">عرض التقرير</button>
+        <a class="btn btn-ghost" href="{{ url_for('export_entity', entity='attendance', date_from=date_from, date_to=date_to) }}">تصدير CSV</a>
+    </form>
+</div>
+
+<div class="section">
+    <div class="section-head"><h2>ملخص الأجور لكل عامل خلال الفترة</h2><span class="count-pill">{{ summary|length }}</span></div>
+    <div class="table-wrap"><div class="card-pad">
+    {% if summary %}
+    <table>
+        <thead><tr><th>العامل</th><th>أيام الحضور</th><th>أيام الغياب</th><th>أيام الإجازة</th><th>ساعات إضافية</th><th>إجمالي الأجر المستحق</th></tr></thead>
+        <tbody>
+        {% for r in summary %}
+            <tr>
+                <td data-label="العامل">{{ r.worker_name }}</td>
+                <td data-label="أيام الحضور"><span class="badge badge-green">{{ r.present_days }}</span></td>
+                <td data-label="أيام الغياب">{% if r.absent_days %}<span class="badge badge-red">{{ r.absent_days }}</span>{% else %}0{% endif %}</td>
+                <td data-label="أيام الإجازة">{{ r.leave_days }}</td>
+                <td data-label="ساعات إضافية">{{ r.total_overtime }}</td>
+                <td data-label="إجمالي الأجر المستحق"><strong>{{ "{:,.0f}".format(r.total_wage) }} د.ل</strong></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty">لا توجد بيانات حضور في هذه الفترة.</div>
+    {% endif %}
+    </div></div>
+</div>
+
+<div class="section">
+    <div class="section-head"><h2>سجل الحضور التفصيلي</h2><span class="count-pill">{{ attendance_rows|length }}</span></div>
+    <div class="table-wrap"><div class="card-pad">
+    {% if attendance_rows %}
+    <table>
+        <thead><tr><th>العامل</th><th>الدور</th><th>الموقع</th><th>التاريخ</th><th>الحالة</th><th>وقت الحضور</th></tr></thead>
+        <tbody>
+        {% for r in attendance_rows %}
+            <tr>
+                <td data-label="العامل">{{ r.worker_name }}</td>
+                <td data-label="الدور">{{ r.role or '—' }}</td>
+                <td data-label="الموقع">{{ r.site_name }}</td>
+                <td data-label="التاريخ">{{ r.date }}</td>
+                <td data-label="الحالة">
+                    {% if r.status == 'حاضر' %}<span class="badge badge-green">حاضر</span>
+                    {% elif r.status == 'غائب' %}<span class="badge badge-red">غائب</span>
+                    {% else %}<span class="badge badge-amber">{{ r.status }}</span>{% endif %}
+                </td>
+                <td data-label="وقت الحضور">{{ r.check_in_time or '—' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty">لا توجد سجلات حضور في هذه الفترة.</div>
+    {% endif %}
+    </div></div>
+</div>
+
+{% endblock %}

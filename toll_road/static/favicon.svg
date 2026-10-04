@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="fInk" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#43464C"/>
+      <stop offset="0.55" stop-color="#2A2D32"/>
+      <stop offset="1" stop-color="#14161A"/>
+    </linearGradient>
+    <linearGradient id="fGold" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#EEDFB6"/>
+      <stop offset="0.5" stop-color="#DCC489"/>
+      <stop offset="1" stop-color="#BE9E5B"/>
+    </linearGradient>
+    <clipPath id="fClip">
+      <rect x="96" y="96" width="320" height="320" rx="70" transform="rotate(45 256 256)"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#fClip)">
+    <rect x="0" y="0" width="512" height="512" fill="url(#fInk)"/>
+    <path d="M256 54 C315 150 315 362 256 458 L512 458 L512 54 Z" fill="url(#fGold)"/>
+    <path d="M256 54 C315 150 315 362 256 458" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+    <path d="M256 54 C315 150 315 362 256 458" transform="translate(-14,0)"
+          fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-dasharray="30 30"/>
+    <path d="M170 188 L184.7 225.8 L225.2 228.1 L193.8 253.7 L204.1 292.9 L170 271 L135.9 292.9 L146.2 253.7 L114.8 228.1 L155.3 225.8 Z"
+          fill="#FFFFFF"/>
+  </g>
+  <rect x="96" y="96" width="320" height="320" rx="70" transform="rotate(45 256 256)"
+        fill="none" stroke="#FFFFFF" stroke-width="14"/>
+</svg>

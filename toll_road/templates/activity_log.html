@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}سجل النشاط{% endblock %}
+{% block page_title %}سجل النشاط (تدقيق){% endblock %}
+
+{% block content %}
+
+<form class="search-bar" method="get">
+    <select name="category">
+        <option value="">كل الفئات</option>
+        <option value="auth" {{ 'selected' if category=='auth' }}>تسجيل الدخول/الخروج</option>
+        <option value="sites" {{ 'selected' if category=='sites' }}>المواقع</option>
+        <option value="workers" {{ 'selected' if category=='workers' }}>العمالة</option>
+        <option value="equipment" {{ 'selected' if category=='equipment' }}>المعدات</option>
+        <option value="materials" {{ 'selected' if category=='materials' }}>المواد</option>
+        <option value="reports" {{ 'selected' if category=='reports' }}>التقارير</option>
+        <option value="users" {{ 'selected' if category=='users' }}>المستخدمون</option>
+    </select>
+    <button class="btn btn-ghost btn-small" type="submit">تصفية</button>
+    {% if category %}<a class="btn btn-ghost btn-small" href="{{ url_for('activity_log_view') }}">إعادة تعيين</a>{% endif %}
+</form>
+
+<div class="card section">
+    {% if logs %}
+        {% for l in logs %}
+        <div class="log-row">
+            <div class="log-dot"></div>
+            <div>
+                <div class="log-text">{{ l.action }}</div>
+                <div class="log-meta">{{ l.username or 'النظام' }} · {{ l.created_at }} {% if l.category %}· {{ l.category }}{% endif %}</div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty">لا توجد حركات مسجّلة بعد.</div>
+    {% endif %}
+</div>
+
+{% endblock %}

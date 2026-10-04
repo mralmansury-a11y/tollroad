@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}إدارة المستخدمين{% endblock %}
+{% block page_title %}إدارة المستخدمين{% endblock %}
+
+{% block content %}
+
+<div class="card section">
+    <h2 class="card-title">إنشاء مستخدم جديد</h2>
+    <form method="post" class="form-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field"><label>اسم المستخدم</label><input name="username" required placeholder="username"></div>
+        <div class="field"><label>الاسم الكامل</label><input name="full_name" required></div>
+        <div class="field"><label>كلمة المرور</label><input name="password" type="password" required placeholder="4 أحرف على الأقل"></div>
+        <div class="field">
+            <label>الصلاحية</label>
+            <select name="role">
+                <option value="viewer">اطلاع فقط</option>
+                <option value="manager">مشرف</option>
+                <option value="admin">مدير النظام</option>
+            </select>
+        </div>
+        <button class="btn" type="submit">إنشاء المستخدم</button>
+    </form>
+</div>
+
+<div class="section">
+    <div class="section-head"><h2>كل المستخدمين</h2><span class="count-pill">{{ users|length }}</span></div>
+    <div class="table-wrap"><div class="card-pad">
+    <table>
+        <thead><tr><th>اسم المستخدم</th><th>الاسم الكامل</th><th>الصلاحية</th><th>الحالة</th><th>كلمة المرور</th><th></th></tr></thead>
+        <tbody>
+        {% for u in users %}
+            <tr>
+                <td data-label="اسم المستخدم">{{ u.username }}</td>
+                <td data-label="الاسم الكامل">{{ u.full_name }}</td>
+                <td data-label="الصلاحية"><span class="role-pill role-{{ u.role }}">{{ role_labels.get(u.role, u.role) }}</span></td>
+                <td data-label="الحالة">
+                    {% if u.active %}<span class="badge badge-green">مفعّل</span>{% else %}<span class="badge badge-red">معطّل</span>{% endif %}
+                </td>
+                <td data-label="كلمة المرور">
+                    <form method="post" action="{{ url_for('change_user_password', user_id=u.id) }}" class="actions-row">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="password" name="new_password" minlength="6" required placeholder="كلمة مرور جديدة" style="max-width:160px;">
+                        <button class="btn btn-small btn-ghost" type="submit">تغيير</button>
+                    </form>
+                </td>
+                <td data-label="">
+                    {% if u.id != current_user_id %}
+                    <form method="post" action="{{ url_for('toggle_user', user_id=u.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-small btn-ghost" type="submit">{{ 'تعطيل' if u.active else 'تفعيل' }}</button>
+                    </form>
+                    {% else %}
+                    <span class="muted" style="font-size:11.5px;">أنت</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div></div>
+</div>
+
+{% endblock %}
